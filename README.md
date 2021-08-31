@@ -2,7 +2,7 @@
 My first git
 
 [English] \
-This is my first git. I wrote a calculator in the program, which can use sin, cos, tan, log, log10 functions and pi, phi(i.e. (1+\sqrt(5)) / 2) and e.
+This is my first git. I wrote a calculator in the program, which can use sin, cos, tan, log, log10 functions and pi, phi(i.e. (1+sqrt(5)) / 2) and e.
 You can use parentheses, + - * /, ^(power) and the above functions and constants.
 More functions and constants may be added in the future. Please see line 14 and 15 of /Calculator/calculator.h .
 
