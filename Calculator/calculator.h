@@ -21,8 +21,7 @@ template <typename Type>
 vector<Type> subvector(vector<Type> vec, size_t start, size_t end)
 {
 	vec.erase(vec.begin(), vec.begin() + start);
-	if (end - start == vec.size() - 1) vec.pop_back();
-	else vec.erase(vec.begin() + end - start, vec.end());
+	vec.erase(vec.begin() + (end - start), vec.end());
 	return vec;
 }
 // all coincident
@@ -69,6 +68,7 @@ bool isnum(char ch)
 }
 bool isnum(string str, bool constants_ = true)
 {
+	if (str == "-") return false;
 	if (str[0] == '-') return isnum(str.substr(1, str.length() - 1));
 	if (constants_ && vector_include(constants, str)) return true;
 	size_t num_of_dots = 0;
@@ -81,17 +81,23 @@ bool isnum(string str, bool constants_ = true)
 	return true;
 }
 
+double calculate_powers(const vector<double>& power)
+{
+	double result = 1;
+	for (size_t i = power.size() - 1; i >= 0 && i <= power.size(); --i)
+	{
+		result = pow(power[i], result);
+	}
+	return result;
+}
+
 vector<string> parse(string equation)
 {
-	vector<string> stack;
 	string temp = "";
-	bool negative_sign = false;
+	vector<string> stack;
 	for (size_t i = 0; i < equation.length(); ++i)
 	{
 		if (isnum(equation[i])) temp += equation[i];
-		else if (equation[i] == 'e') temp += equation[i]; // e
-		else if (isnum(equation.substr(i, 2))) temp += equation.substr(i, 2), ++i; // pi
-		else if (isnum(equation.substr(i, 3))) temp += equation.substr(i, 3), i += 2; // phi
 		else if (vector_include(empties, equation.substr(i, 1)))
 		{
 			if (temp != "")
@@ -105,9 +111,9 @@ vector<string> parse(string equation)
 			if (equation[i] == '-')
 			{
 				if (i == 0) temp = "-";
-				else if (!isnum(stack[stack.size() - 1])) temp = "-";
+				else if (!isnum(temp)) stack.push_back(temp), temp = "-";
 			}
-			if (temp == "-") continue;
+			if (temp == "-" && equation[i] == '-') continue;
 			if (temp != "") stack.push_back(temp);
 			stack.push_back(equation.substr(i, 1));
 			temp = "";
@@ -163,7 +169,7 @@ double no_brackets_calculate(vector<string> stack)
 {
 	if (stack.size() == 1 && isnum(stack[0])) return to_double(stack[0]);
 
-	// sin asin cos acos tan atan log log10 sqr cub
+	// sin asin cos acos tan atan log log10 sqr cubr
 	size_t num_of_powers = 0;
 	size_t power_begin; // the index
 	size_t power_end; // the index
@@ -206,12 +212,14 @@ double no_brackets_calculate(vector<string> stack)
 						stack[power_begin - 1] = to_string(pow(to_double(stack[power_end + 1]), power / 3));
 					stack.erase(stackitbegin, stackitend + 1);
 					i = power_begin - 1;
+					if (power_begin != 1)
+						if (isnum(stack[power_begin - 2]) || stack[power_begin - 2] == ")")
+							stack.insert(stack.begin() + (power_begin - 1), "*"); // as 2sin^2 (pi/2) -> 2*sin^2 (pi/2)
 					in_power = false;
 				}
 			}
 		}
-		else if (vector_include(operators, stack[i]) && !vector_include(binary_op, stack[i]) &&
-			stack[i] != "(" && stack[i] != ")")
+		else if (vector_include(operators, stack[i]) && !vector_include(binary_op, stack[i]) && stack[i] != "(" && stack[i] != ")")
 		{
 			if (i == stack.size() - 1) error("No number after \"" + stack[i] + "\".");
 			else if (stack[i + 1] == "^") // as sin^2 3.14159
@@ -251,22 +259,44 @@ double no_brackets_calculate(vector<string> stack)
 	}
 
 	// ^
+	size_t power_begin_po;
+	bool power_begins = false;
+	vector<double> powers;
 	for (size_t i = 0; i < stack.size(); ++i)
 	{
-		if (stack[i] == "^")
+		if (power_begins)
 		{
+			if (isnum(stack[i])) powers.push_back(to_double(stack[i]));
+			// if (stack[i] != "^" && !isnum(stack[i]))
+			if (i == stack.size() - 1)
+			{
+				power_begins = false;
+				vector<string>::iterator it = stack.begin() + power_begin_po;
+				double power = calculate_powers(powers); // 2^2^3 = 2^(2^3) not= (2^2)^3
+				stack.erase(it, it + (2 * powers.size() - 2));
+				stack[power_begin_po] = to_string(power);
+				i = power_begin_po;
+			}
+			else if (stack[i + 1] != "^" && !isnum(stack[i + 1]))
+			{
+				power_begins = false;
+				vector<string>::iterator it = stack.begin() + power_begin_po;
+				double power = calculate_powers(powers); // 2^2^3 = 2^(2^3) not= (2^2)^3
+				stack.erase(it, it + (2 * powers.size() - 2));
+				stack[power_begin_po] = to_string(power);
+				i = power_begin_po;
+				powers.clear();
+			}
+		}
+		else if (stack[i] == "^")
+		{
+			power_begin_po = i - 1;
+			power_begins = true;
 			if (i == stack.size() - 1) error("No number after \"^\".");
 			else if (i == 0) error("No number before \"^\".");
 			else if (!isnum(stack[i + 1])) error("\"" + stack[i + 1] + "\" after \"^\".");
 			else if (!isnum(stack[i - 1])) error("\"" + stack[i - 1] + "\" before \"^\".");
-			else
-			{
-				vector<string>::iterator it = stack.begin() + i;
-				double power = to_double(stack[i + 1]);
-				stack.erase(it, it + 2);
-				stack[i - 1] = to_string(pow(to_double(stack[i - 1]), power));
-				--i;
-			}
+			else powers.push_back(to_double(stack[i - 1]));
 		}
 	}
 
@@ -297,7 +327,31 @@ double no_brackets_calculate(vector<string> stack)
 		if (stack[i] == "+" || stack[i] == "-")
 		{
 			if (i == stack.size() - 1) error("No number after \"" + stack[i] + "\".");
-			else if (i == 0) error("No number before \"" + stack[i] + "\".");
+			else if (i == 0)
+			{
+				if (stack[i] == "+") error("No number before \"+\".");
+				else
+				{
+					double result;
+					bool have_result = false;
+					for (size_t j = i; j < stack.size(); ++j)
+					{
+						if (isnum(stack[j]))
+						{
+							result = to_double(stack[j]);
+							have_result = true;
+							break;
+						}
+					}
+					if (stack.size() == 1) error("No number after \"-\".");
+					else if (!isnum(stack[1])) error("No number after \"-\".");
+					else
+					{
+						stack[0] = to_string(-to_double(stack[1]));
+						stack.erase(stack.begin() + 1);
+					}
+				}
+			}
 			else if (!isnum(stack[i + 1])) error("\"" + stack[i + 1] + "\" after \"" + stack[i] + "\".");
 			else if (!isnum(stack[i - 1])) error("\"" + stack[i - 1] + "\" before \"" + stack[i] + "\".");
 			else
@@ -315,10 +369,7 @@ double no_brackets_calculate(vector<string> stack)
 	return to_double(stack[0]);
 }
 
-double no_brackets_calculate(string equation)
-{
-	return no_brackets_calculate(parse(equation));
-}
+double no_brackets_calculate(string equation) { return no_brackets_calculate(parse(equation)); }
 
 double calculate(vector<string> stack)
 {
@@ -329,8 +380,8 @@ double calculate(vector<string> stack)
 	size_t layer_end; // index
 	if (lefts != rights)
 	{
-		if (lefts < rights) error(to_string(rights - lefts) + " right bracket(s) are missing at the end.");
-		else error(to_string(lefts - rights) + " left bracket(s) are missing at the beginning.");
+		if (lefts < rights) error(to_string(rights - lefts) + " right bracket(s) is(are) missing at the end.");
+		else error(to_string(lefts - rights) + " left bracket(s) is(are) missing at the beginning.");
 	}
 	if (!vector_include(stack, static_cast<string>("("))) return no_brackets_calculate(stack);
 	for (size_t i = 0; i < stack.size(); ++i)
@@ -341,10 +392,61 @@ double calculate(vector<string> stack)
 			if (layer == 1) layer_begin = i;
 			if (i != 0)
 			{
-				if (isnum(stack[i - 1]) || stack[i - 1] == ")")
+				if (isnum(stack[i - 1])) // ...52(3+1)
 				{
-					stack.insert(stack.begin() + i, "*");
-					return calculate(stack);
+					if (i != 1)
+					{
+						if (stack[i - 2] != "^") // not ...sin^2(pi) or ...2^3(4+1)
+						{
+							stack.insert(stack.begin() + i, "*"); // ...5+2(2+1)
+						}
+						else // ...sin^2(pi) or ...2^3(4+1)
+						{
+							if (i != 2)
+							{
+								if (isnum(stack[i - 3]))
+								{
+									size_t brackets = 0, pos;
+									for (pos = i; pos < stack.size(); ++pos)
+									{
+										if (stack[pos] == "(") brackets++;
+										if (stack[pos] == ")") brackets--;
+										if (brackets == 0) break;
+									}
+									double result = calculate(subvector(stack, i + 1, pos));
+									double num = to_double(stack[i - 3]);
+									stack.erase(stack.begin() + i, stack.begin() + pos + 1);
+									stack[i - 1] = to_string(result * num);
+									i -= 2;
+									layer--;
+									if (layer == 0) layer_end = pos;
+								}
+								else if (vector_include(operators, stack[i - 3]) && !vector_include(binary_op, stack[i - 3]) && (stack[i - 3] != "(" || stack[i - 3] != ")"))
+								{
+									size_t brackets = 0, pos;
+									for (pos = i; pos < stack.size(); ++pos)
+									{
+										if (stack[pos] == "(") brackets++;
+										if (stack[pos] == ")") brackets--;
+										if (brackets == 0) break;
+									}
+									double result = calculate(subvector(stack, i + 1, pos));
+									double num = to_double(stack[i - 3]);
+									stack.erase(stack.begin() + i, stack.begin() + pos + 1);
+									stack[i - 1] = to_string(result * num);
+									i -= 2;
+									layer--;
+									if (layer == 0) layer_end = pos;
+								}
+							}
+						}
+					}
+					else
+					{
+						stack.insert(stack.begin() + 1, "*");
+						++i;
+						++layer_begin;
+					}
 				}
 			}
 		}
