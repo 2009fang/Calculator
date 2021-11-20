@@ -10,4 +10,4 @@ More functions and constants may be added in the future. Please see line 14 and 
 这是我第一个git。我在程序中写了一个计算器，可以用sin、cos、tan、log、log10函数与pi、phi（就是(1+sqrt(5))/2）、e。可以用括号、+-*/、^（次方）及上述函数与常数。
 将来可能会添加更多的函数与常数，请在/Calculator/calculator.h的第14、15行查看。
 
-New Update: I use Dev-c++ but it can't run. Please use Visual Studio.
+New Update: I use Dev-c++ but it can't run. Please use Visual Studio. Or go to /exe/Calculator.exe to run.
