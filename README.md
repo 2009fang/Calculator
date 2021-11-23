@@ -11,3 +11,4 @@ More functions and constants may be added in the future. Please see line 14 and 
 将来可能会添加更多的函数与常数，请在/Calculator/calculator.h的第14、15行查看。
 
 New Update: I use Dev-c++ but it can't run. Please use Visual Studio. Or go to /exe/Calculator.exe to run.
+New Update: I find that /exe/Calculator.exe can't run in Win7. The new one is in /
